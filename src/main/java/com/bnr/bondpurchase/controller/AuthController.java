@@ -6,6 +6,7 @@ import com.bnr.bondpurchase.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -33,6 +34,18 @@ public class AuthController {
     public ResponseEntity<AuthResponse> loginInvestor(@RequestBody LoginRequest request) {
         return ResponseEntity.ok(authService.loginInvestor(request));
     }
+    @GetMapping("/investor/profile")
+    public ResponseEntity<InvestorProfileResponse> getProfile(Authentication auth) {
+        return ResponseEntity.ok(authService.getProfile(auth.getName()));
+    }
+
+    @PutMapping("/investor/profile")
+    public ResponseEntity<InvestorProfileResponse> updateProfile(
+            @Valid @RequestBody UpdateProfileRequest request,
+            Authentication auth) {
+        return ResponseEntity.ok(authService.updateProfile(auth.getName(), request));
+    }
+
 
     // --- BROKER ---
     @PostMapping("/broker/register")

@@ -1,6 +1,7 @@
 package com.bnr.bondpurchase.enums;
 
 public enum InvestmentStatus {
-    ACTIVE,     // bond purchased, currently running
-    INACTIVE    // bond no longer active — matured or exited
+    PENDING_PAYMENT, // waiting for payment to clear
+    ACTIVE,          // payment confirmed, bond running
+    INACTIVE         // matured or exited
 }

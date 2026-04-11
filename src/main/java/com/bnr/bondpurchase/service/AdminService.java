@@ -7,7 +7,9 @@ import com.bnr.bondpurchase.model.*;
 import com.bnr.bondpurchase.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-
+import com.bnr.bondpurchase.dto.InvestorBondsResponse;
+import com.bnr.bondpurchase.enums.UserRole;
+import com.bnr.bondpurchase.model.BrokerBondListing;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -227,5 +229,40 @@ public class AdminService {
                 .couponRate(b.getCouponRate())
                 .status(b.getStatus().name())
                 .build();
+    }
+
+    public List<InvestorBondsResponse> getAllInvestorsWithBonds() {
+        return userRepository.findByRole(UserRole.INVESTOR).stream()
+                .map(investor -> {
+                    List<InvestmentResponse> bonds = bondInvestmentRepository
+                            .findByInvestor(investor)
+                            .stream()
+                            .map(investment -> {
+                                BrokerBondListing listing = investment.getBrokerBondListing();
+                                return InvestmentResponse.builder()
+                                        .id(investment.getId())
+                                        .bondName(listing.getBondType().getName())
+                                        .durationYears(listing.getBondType().getDurationYears())
+                                        .couponRate(listing.getBondType().getCouponRate())
+                                        .brokerFee(listing.getBrokerFee())
+                                        .amountInvested(investment.getAmountInvested())
+                                        .bondNumber(investment.getBondNumber())
+                                        .purchaseDate(investment.getPurchaseDate())
+                                        .status(investment.getStatus().name())
+                                        .brokerCompanyName(listing.getBroker().getCompanyName())
+                                        .build();
+                            })
+                            .toList();
+
+                    return InvestorBondsResponse.builder()
+                            .investorId(investor.getId())
+                            .fullName(investor.getFullName())
+                            .email(investor.getEmail())
+                            .nationalId(investor.getNationalId())
+                            .payoutAccount(investor.getPayoutAccount())
+                            .bonds(bonds)
+                            .build();
+                })
+                .toList();
     }
 }

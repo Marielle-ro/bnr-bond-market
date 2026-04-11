@@ -19,4 +19,7 @@ public class BrokerRegisterRequest {
 
     @NotBlank(message = "Collection account is required")
     private String collectionAccount;
+
+    @NotBlank(message = "RDB Certificate URL is required")
+    private String rdbCertificateUrl;
 }

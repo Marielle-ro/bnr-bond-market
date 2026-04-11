@@ -36,4 +36,6 @@ public class Broker {
 
     @Enumerated(EnumType.STRING)
     private BrokerStatus status = BrokerStatus.PENDING;
+
+    private String rdbCertificateUrl;
 }

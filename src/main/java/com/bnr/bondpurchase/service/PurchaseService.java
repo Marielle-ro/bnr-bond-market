@@ -3,6 +3,7 @@ package com.bnr.bondpurchase.service;
 import com.bnr.bondpurchase.dto.InvestmentResponse;
 import com.bnr.bondpurchase.dto.PurchaseRequest;
 import com.bnr.bondpurchase.enums.BondStatus;
+import com.bnr.bondpurchase.enums.InvestmentStatus;
 import com.bnr.bondpurchase.model.BondInvestment;
 import com.bnr.bondpurchase.model.BrokerBondListing;
 import com.bnr.bondpurchase.model.User;
@@ -54,7 +55,7 @@ public class PurchaseService {
         investment.setAmountInvested(request.getAmount());
         investment.setBondNumber(bondNumber);
         investment.setPurchaseDate(LocalDateTime.now());
-
+        investment.setStatus(InvestmentStatus.PENDING_PAYMENT);
         BondInvestment saved = bondRepository.save(investment);
 
         rabbitPublisher.publishPayoutSchedule(

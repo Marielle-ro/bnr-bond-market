@@ -3,8 +3,11 @@ package com.bnr.bondpurchase.controller;
 import com.bnr.bondpurchase.dto.*;
 import com.bnr.bondpurchase.model.Broker;
 import com.bnr.bondpurchase.service.AdminService;
+import com.bnr.bondpurchase.service.ReceiptPdfService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -18,6 +21,7 @@ import java.util.UUID;
 public class AdminController {
 
     private final AdminService adminService;
+    private final ReceiptPdfService receiptPdfService;
 
     // --- DASHBOARD ---
     @GetMapping("/dashboard")
@@ -88,5 +92,22 @@ public class AdminController {
     @GetMapping("/audit-logs")
     public ResponseEntity<List<AuditLogResponse>> getAuditLogs() {
         return ResponseEntity.ok(adminService.getAuditLogs());
+    }
+
+    // --- INVESTORS ---
+    @GetMapping("/investors")
+    public ResponseEntity<List<InvestorBondsResponse>> getAllInvestorsWithBonds() {
+        return ResponseEntity.ok(adminService.getAllInvestorsWithBonds());
+    }
+
+    // --- RECEIPTS ---
+    @GetMapping("/receipts/{investmentId}")
+    public ResponseEntity<byte[]> downloadReceipt(@PathVariable UUID investmentId) {
+        byte[] pdf = receiptPdfService.generateReceipt(investmentId);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=receipt-" + investmentId + ".pdf")
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(pdf);
     }
 }

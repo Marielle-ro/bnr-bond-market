@@ -71,6 +71,25 @@ public class AuthService {
         return new AuthResponse(token, "INVESTOR");
     }
 
+    public InvestorProfileResponse getProfile(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Investor not found"));
+        return mapToProfileResponse(user);
+    }
+
+    public InvestorProfileResponse updateProfile(String email, UpdateProfileRequest request) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Investor not found"));
+
+        if (request.getFullName() != null && !request.getFullName().isBlank()) {
+            user.setFullName(request.getFullName());
+        }
+        user.setPayoutAccount(request.getPayoutAccount());
+        user.setPayoutMethod(request.getPayoutMethod());
+        userRepository.save(user);
+        return mapToProfileResponse(user);
+    }
+
     // --- BROKER ---
     public AuthResponse registerBroker(BrokerRegisterRequest request) {
         if (brokerRepository.findByEmail(request.getEmail()).isPresent()) {
@@ -82,6 +101,7 @@ public class AuthService {
         broker.setPassword(passwordEncoder.encode(request.getPassword()));
         broker.setCompanyName(request.getCompanyName());
         broker.setCollectionAccount(request.getCollectionAccount());
+        broker.setRdbCertificateUrl(request.getRdbCertificateUrl());
         broker.setStatus(BrokerStatus.PENDING);
         brokerRepository.save(broker);
 
@@ -92,7 +112,6 @@ public class AuthService {
         Broker broker = brokerRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new RuntimeException("Broker not found!"));
 
-        // Check status before password to give clear error messages
         if (broker.getStatus() == BrokerStatus.PENDING) {
             throw new RuntimeException("Your account is pending admin approval");
         }
@@ -121,5 +140,16 @@ public class AuthService {
                         .collectionAccount(broker.getCollectionAccount())
                         .build())
                 .toList();
+    }
+
+    private InvestorProfileResponse mapToProfileResponse(User user) {
+        return InvestorProfileResponse.builder()
+                .id(user.getId())
+                .fullName(user.getFullName())
+                .email(user.getEmail())
+                .nationalId(user.getNationalId())
+                .payoutAccount(user.getPayoutAccount())
+                .payoutMethod(user.getPayoutMethod())
+                .build();
     }
 }

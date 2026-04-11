@@ -27,9 +27,7 @@ public class User {
     @Enumerated(EnumType.STRING)
     private UserRole role;
 
-    // For Investors: National ID
     private String nationalId;
-
-    // For Investors: Where they receive interest
     private String payoutAccount;
+    private String payoutMethod; // "MOBILE_MONEY" or "BANK"
 }
