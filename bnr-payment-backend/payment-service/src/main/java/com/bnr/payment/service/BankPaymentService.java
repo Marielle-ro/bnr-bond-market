@@ -16,8 +16,13 @@ import java.util.UUID;
 public class BankPaymentService {
 
     public PaymentResult processPayment(BondPurchaseRequest request) {
-        log.info("🏦 [Bank] Initiating debit from account {} | Amount: {} {}",
-                request.getInvestorAccount(), request.getAmount(), request.getCurrency());
+        if (request.getBankName() == null) {
+            return new PaymentResult("FAILED", null, "Bank: Please select a bank");
+        }
+
+        log.info("🏦 [Bank] Initiating debit from account {} | Bank: {} | Amount: {} {}",
+                request.getInvestorAccount(), request.getBankName().getDisplayName(),
+                request.getAmount(), request.getCurrency());
 
         // Simulate bank processing delay (2 seconds)
         simulateDelay(2000);
@@ -39,8 +44,8 @@ public class BankPaymentService {
             return new PaymentResult(
                     "SUCCESS",
                     txnId,
-                    "Bank transfer of " + request.getAmount() + " " + request.getCurrency()
-                            + " debited from account " + request.getInvestorAccount()
+                    request.getBankName().getDisplayName() + " transfer of " + request.getAmount()
+                            + " " + request.getCurrency() + " debited from account " + request.getInvestorAccount()
             );
         } else {
             log.warn("❌ [Bank] Transfer FAILED for account: {}", request.getInvestorAccount());

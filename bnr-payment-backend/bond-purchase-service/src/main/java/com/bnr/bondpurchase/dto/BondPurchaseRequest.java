@@ -13,9 +13,11 @@ import java.time.LocalDateTime;
 public class BondPurchaseRequest {
     private String purchaseId;
     private String investorId;
-    private String investorPhone;     // for MoMo
-    private String investorAccount;   // for Bank transfer
-    private String paymentMethod;     // "MOMO" or "BANK"
+    private String investorPhone;       // for MoMo
+    private String investorAccount;     // for Bank transfer
+    private String paymentMethod;       // "MOMO" or "BANK"
+    private MomoProviderEnum momoProvider;  // MTN or AIRTEL (when paymentMethod=MOMO)
+    private RwandaBankEnum bankName;        // selected bank (when paymentMethod=BANK)
     private BigDecimal amount;
     private String currency;          // "RWF"
     private LocalDateTime purchaseDate;

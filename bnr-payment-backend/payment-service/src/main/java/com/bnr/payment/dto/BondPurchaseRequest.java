@@ -15,7 +15,9 @@ public class BondPurchaseRequest {
     private String investorId;
     private String investorPhone;
     private String investorAccount;
-    private String paymentMethod;     // "MOMO" or "BANK"
+    private String paymentMethod;          // "MOMO" or "BANK"
+    private MomoProviderEnum momoProvider; // MTN or AIRTEL (when paymentMethod=MOMO)
+    private RwandaBankEnum bankName;       // selected bank (when paymentMethod=BANK)
     private BigDecimal amount;
     private String currency;
     private LocalDateTime purchaseDate;

@@ -16,7 +16,12 @@ import java.util.UUID;
 public class MoMoPaymentService {
 
     public PaymentResult processPayment(BondPurchaseRequest request) {
-        log.info("📱 [MoMo] Initiating payment from {} | Amount: {} {}",
+        if (request.getMomoProvider() == null) {
+            return new PaymentResult("FAILED", null, "MoMo: Please select a provider (MTN or AIRTEL)");
+        }
+
+        log.info("📱 [MoMo] Initiating {} payment from {} | Amount: {} {}",
+                request.getMomoProvider().getDisplayName(),
                 request.getInvestorPhone(), request.getAmount(), request.getCurrency());
 
         // Simulate network/processing delay (1.5 seconds)
@@ -39,15 +44,15 @@ public class MoMoPaymentService {
             return new PaymentResult(
                     "SUCCESS",
                     txnId,
-                    "MoMo payment of " + request.getAmount() + " " + request.getCurrency()
-                            + " collected from " + request.getInvestorPhone()
+                    request.getMomoProvider().getDisplayName() + " payment of " + request.getAmount()
+                            + " " + request.getCurrency() + " collected from " + request.getInvestorPhone()
             );
         } else {
             log.warn("❌ [MoMo] Payment FAILED for phone: {}", request.getInvestorPhone());
             return new PaymentResult(
                     "FAILED",
                     null,
-                    "MoMo: Insufficient funds or transaction timeout"
+                    "MoMo: Insu fficient funds or transaction timeout"
             );
         }
     }

@@ -1,13 +1,18 @@
 package com.bnr.bondpurchase.controller;
 
 import com.bnr.bondpurchase.dto.BondPurchaseRequest;
+import com.bnr.bondpurchase.dto.MomoProviderEnum;
+import com.bnr.bondpurchase.dto.RwandaBankEnum;
 import com.bnr.bondpurchase.entity.BondPurchase;
 import com.bnr.bondpurchase.service.BondPurchaseService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/bonds")
@@ -52,5 +57,29 @@ public class BondPurchaseController {
     @GetMapping("/active")
     public ResponseEntity<List<BondPurchase>> getActiveBonds() {
         return ResponseEntity.ok(bondPurchaseService.getActiveBonds());
+    }
+
+    /**
+     * GET /api/bonds/banks
+     * Returns all Rwanda banks for frontend dropdown.
+     */
+    @GetMapping("/banks")
+    public ResponseEntity<List<Map<String, String>>> getBanks() {
+        List<Map<String, String>> banks = Arrays.stream(RwandaBankEnum.values())
+                .map(b -> Map.of("code", b.name(), "name", b.getDisplayName()))
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(banks);
+    }
+
+    /**
+     * GET /api/bonds/momo-providers
+     * Returns MoMo providers (MTN, AIRTEL) for frontend dropdown.
+     */
+    @GetMapping("/momo-providers")
+    public ResponseEntity<List<Map<String, String>>> getMomoProviders() {
+        List<Map<String, String>> providers = Arrays.stream(MomoProviderEnum.values())
+                .map(p -> Map.of("code", p.name(), "name", p.getDisplayName()))
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(providers);
     }
 }
