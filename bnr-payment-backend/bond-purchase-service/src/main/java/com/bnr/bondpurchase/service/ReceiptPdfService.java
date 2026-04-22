@@ -1,0 +1,148 @@
+package com.bnr.bondpurchase.service;
+
+import com.bnr.bondpurchase.enums.InvestmentStatus;
+import com.bnr.bondpurchase.model.BondInvestment;
+import com.bnr.bondpurchase.model.BrokerBondListing;
+import com.bnr.bondpurchase.repository.BondInvestmentRepository;
+import lombok.RequiredArgsConstructor;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.PDPageContentStream;
+import org.apache.pdfbox.pdmodel.common.PDRectangle;
+import org.apache.pdfbox.pdmodel.font.PDType1Font;
+import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
+
+import java.io.ByteArrayOutputStream;
+import java.time.format.DateTimeFormatter;
+import java.util.UUID;
+
+@Service
+@RequiredArgsConstructor
+public class ReceiptPdfService {
+
+    private final BondInvestmentRepository bondInvestmentRepository;
+
+    public byte[] generateReceipt(UUID investmentId) {
+        BondInvestment investment = bondInvestmentRepository.findById(investmentId)
+                .orElseThrow(() -> new RuntimeException("Investment not found"));
+        return generateReceiptForInvestment(investment);
+    }
+
+    public byte[] generateReceiptForInvestor(String investorEmail, UUID investmentId) {
+        BondInvestment investment = bondInvestmentRepository.findById(investmentId)
+                .orElseThrow(() -> new RuntimeException("Investment not found"));
+
+        if (!investment.getInvestor().getEmail().equalsIgnoreCase(investorEmail)) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Access denied: this investment does not belong to you"
+            );
+        }
+        return generateReceiptForInvestment(investment);
+    }
+
+    private byte[] generateReceiptForInvestment(BondInvestment investment) {
+        if (investment.getStatus() != InvestmentStatus.ACTIVE) {
+            throw new RuntimeException("Receipt is only available after payment has been confirmed. Current status: " + investment.getStatus());
+        }
+
+        BrokerBondListing listing = investment.getBrokerBondListing();
+
+        try (PDDocument document = new PDDocument()) {
+            PDPage page = new PDPage(PDRectangle.A4);
+            document.addPage(page);
+
+            PDType1Font boldFont = new PDType1Font(Standard14Fonts.FontName.HELVETICA_BOLD);
+            PDType1Font regularFont = new PDType1Font(Standard14Fonts.FontName.HELVETICA);
+
+            try (PDPageContentStream content = new PDPageContentStream(document, page)) {
+
+                float margin = 50;
+                float yStart = 780;
+                float lineHeight = 22;
+                float y = yStart;
+
+                // Title
+                content.beginText();
+                content.setFont(boldFont, 18);
+                content.newLineAtOffset(margin, y);
+                content.showText("NATIONAL BANK OF RWANDA");
+                content.endText();
+                y -= lineHeight;
+
+                content.beginText();
+                content.setFont(boldFont, 13);
+                content.newLineAtOffset(margin, y);
+                content.showText("Treasury Bond Purchase Receipt");
+                content.endText();
+                y -= lineHeight * 2;
+
+                // Divider line
+                content.moveTo(margin, y);
+                content.lineTo(545, y);
+                content.stroke();
+                y -= lineHeight;
+
+                // Rows
+                y = addRow(content, boldFont, regularFont, margin, y, lineHeight, "Bond Number", investment.getBondNumber());
+                y = addRow(content, boldFont, regularFont, margin, y, lineHeight, "Bond Name", listing.getBondType().getName());
+                y = addRow(content, boldFont, regularFont, margin, y, lineHeight, "Duration", listing.getBondType().getDurationYears() + " Years");
+                y = addRow(content, boldFont, regularFont, margin, y, lineHeight, "Coupon Rate (BNR Fixed)", listing.getBondType().getCouponRate() + "%");
+                y = addRow(content, boldFont, regularFont, margin, y, lineHeight, "Broker Fee", listing.getBrokerFee() + "%");
+                y = addRow(content, boldFont, regularFont, margin, y, lineHeight, "Broker Fee Amount",
+                        "RWF " + String.format("%,.2f", investment.getBrokerFeeAmount() != null ? investment.getBrokerFeeAmount() : 0.0));
+                y = addRow(content, boldFont, regularFont, margin, y, lineHeight, "Amount Invested", "RWF " + String.format("%,.2f", investment.getAmountInvested()));
+                y = addRow(content, boldFont, regularFont, margin, y, lineHeight, "Total Paid",
+                        "RWF " + String.format("%,.2f", investment.getTotalAmountToPay() != null ? investment.getTotalAmountToPay() : investment.getAmountInvested()));
+                y = addRow(content, boldFont, regularFont, margin, y, lineHeight, "Broker", listing.getBroker().getCompanyName());
+                y = addRow(content, boldFont, regularFont, margin, y, lineHeight, "Collection Account", listing.getBroker().getCollectionAccount());
+                y = addRow(content, boldFont, regularFont, margin, y, lineHeight, "Investor Name", investment.getInvestor().getFullName());
+                y = addRow(content, boldFont, regularFont, margin, y, lineHeight, "Investor Email", investment.getInvestor().getEmail());
+                y = addRow(content, boldFont, regularFont, margin, y, lineHeight, "Payout Account", investment.getInvestor().getPayoutAccount());
+                y = addRow(content, boldFont, regularFont, margin, y, lineHeight, "Purchase Date",
+                        investment.getPurchaseDate().format(DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm")));
+                y = addRow(content, boldFont, regularFont, margin, y, lineHeight, "Status", investment.getStatus().name());
+
+                y -= lineHeight;
+                content.moveTo(margin, y);
+                content.lineTo(545, y);
+                content.stroke();
+                y -= lineHeight;
+
+                // Footer
+                content.beginText();
+                content.setFont(regularFont, 9);
+                content.newLineAtOffset(margin, y);
+                content.showText("This receipt is auto-generated by the BNR Bond Market System.");
+                content.endText();
+            }
+
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            document.save(outputStream);
+            return outputStream.toByteArray();
+
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to generate receipt PDF", e);
+        }
+    }
+
+    private float addRow(PDPageContentStream content, PDType1Font boldFont, PDType1Font regularFont,
+                          float margin, float y, float lineHeight, String label, String value) throws Exception {
+        content.beginText();
+        content.setFont(boldFont, 11);
+        content.newLineAtOffset(margin, y);
+        content.showText(label + ":");
+        content.endText();
+
+        content.beginText();
+        content.setFont(regularFont, 11);
+        content.newLineAtOffset(margin + 200, y);
+        content.showText(value != null ? value : "N/A");
+        content.endText();
+
+        return y - lineHeight;
+    }
+}

@@ -16,6 +16,8 @@ public class BondPurchaseRequest {
     private String investorPhone;
     private String investorAccount;
     private String paymentMethod;
+    private MomoProviderEnum momoProvider;
+    private RwandaBankEnum bankName;
     private BigDecimal amount;
     private String currency;
     private LocalDateTime purchaseDate;

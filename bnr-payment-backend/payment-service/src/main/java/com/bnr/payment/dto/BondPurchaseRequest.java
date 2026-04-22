@@ -1,5 +1,6 @@
 package com.bnr.payment.dto;
 
+import com.bnr.payment.dto.RwandaBankEnum;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -15,9 +16,9 @@ public class BondPurchaseRequest {
     private String investorId;
     private String investorPhone;
     private String investorAccount;
-    private String paymentMethod;          // "MOMO" or "BANK"
-    private MomoProviderEnum momoProvider; // MTN or AIRTEL (when paymentMethod=MOMO)
-    private RwandaBankEnum bankName;       // selected bank (when paymentMethod=BANK)
+    private String paymentMethod;
+    private MomoProviderEnum momoProvider;
+    private RwandaBankEnum bankName;
     private BigDecimal amount;
     private String currency;
     private LocalDateTime purchaseDate;

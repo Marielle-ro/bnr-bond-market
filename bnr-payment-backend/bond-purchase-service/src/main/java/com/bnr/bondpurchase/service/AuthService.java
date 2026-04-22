@@ -1,53 +1,192 @@
 package com.bnr.bondpurchase.service;
 
-import com.bnr.bondpurchase.dto.AuthDtos;
-import com.bnr.bondpurchase.entity.User;
+import com.bnr.bondpurchase.dto.*;
+import com.bnr.bondpurchase.enums.BrokerStatus;
+import com.bnr.bondpurchase.enums.UserRole;
+import com.bnr.bondpurchase.model.Broker;
+import com.bnr.bondpurchase.model.User;
+import com.bnr.bondpurchase.repository.BrokerRepository;
 import com.bnr.bondpurchase.repository.UserRepository;
+import com.bnr.bondpurchase.security.JwtService;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class AuthService {
 
     private final UserRepository userRepository;
+    private final BrokerRepository brokerRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
-    private final AuthenticationManager authenticationManager;
-    private final UserDetailsService userDetailsService;
 
-    public AuthDtos.LoginResponse login(AuthDtos.LoginRequest request) {
-        authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
-        );
-        UserDetails userDetails = userDetailsService.loadUserByUsername(request.getEmail());
-        String token = jwtService.generateToken(userDetails);
-        User user = userRepository.findByEmail(request.getEmail()).orElseThrow();
-        log.info("✅ User logged in: {}", request.getEmail());
-        return new AuthDtos.LoginResponse(token, user.getEmail(), user.getRole());
+    // --- ADMIN ---
+    public AuthResponse loginAdmin(LoginRequest request) {
+        User admin = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new RuntimeException("Admin not found"));
+
+        if (admin.getRole() != UserRole.ADMIN) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Unauthorized access");
+        }
+
+        if (!passwordEncoder.matches(request.getPassword(), admin.getPassword())) {
+            throw new RuntimeException("Invalid password");
+        }
+
+        String token = jwtService.generateToken(admin.getEmail(), "ADMIN");
+        return new AuthResponse(token, "ADMIN");
     }
 
-    public AuthDtos.LoginResponse register(AuthDtos.RegisterRequest request) {
+    // --- INVESTOR ---
+    public AuthResponse registerInvestor(InvestorRegisterRequest request) {
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
-            throw new RuntimeException("Email already registered: " + request.getEmail());
+            throw new RuntimeException("Email already registered!");
         }
+        validatePayoutProfile(request.getPayoutMethod(), request.getPayoutAccount(), request.getPayoutBankName());
+
         User user = new User();
         user.setEmail(request.getEmail());
-        user.setFullName(request.getFullName());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setRole(request.getRole() != null ? request.getRole().toUpperCase() : "INVESTOR");
+        user.setFullName(request.getFullName());
+        user.setNationalId(request.getNationalId());
+        user.setPayoutAccount(request.getPayoutAccount());
+        user.setPayoutMethod(normalizePayoutMethod(request.getPayoutMethod()));
+        user.setPayoutBankName(normalize(request.getPayoutBankName()));
+        user.setRole(UserRole.INVESTOR);
         userRepository.save(user);
 
-        UserDetails userDetails = userDetailsService.loadUserByUsername(user.getEmail());
-        String token = jwtService.generateToken(userDetails);
-        log.info("✅ New user registered: {}", user.getEmail());
-        return new AuthDtos.LoginResponse(token, user.getEmail(), user.getRole());
+        String token = jwtService.generateToken(user.getEmail(), "INVESTOR");
+        return new AuthResponse(token, "INVESTOR");
+    }
+
+    public AuthResponse loginInvestor(LoginRequest request) {
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new RuntimeException("Investor not found!"));
+
+        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            throw new RuntimeException("Invalid password!");
+        }
+
+        String token = jwtService.generateToken(user.getEmail(), "INVESTOR");
+        return new AuthResponse(token, "INVESTOR");
+    }
+
+    public InvestorProfileResponse getProfile(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Investor not found"));
+        return mapToProfileResponse(user);
+    }
+
+    public InvestorProfileResponse updateProfile(String email, UpdateProfileRequest request) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Investor not found"));
+
+        if (request.getFullName() != null && !request.getFullName().isBlank()) {
+            user.setFullName(request.getFullName());
+        }
+        String payoutMethod = normalizePayoutMethod(request.getPayoutMethod());
+        validatePayoutProfile(payoutMethod, request.getPayoutAccount(), request.getPayoutBankName());
+        user.setPayoutAccount(request.getPayoutAccount());
+        user.setPayoutMethod(payoutMethod);
+        user.setPayoutBankName(normalize(request.getPayoutBankName()));
+        userRepository.save(user);
+        return mapToProfileResponse(user);
+    }
+
+    // --- BROKER ---
+    public AuthResponse registerBroker(BrokerRegisterRequest request) {
+        if (brokerRepository.findByEmail(request.getEmail()).isPresent()) {
+            throw new RuntimeException("Broker email already registered!");
+        }
+
+        Broker broker = new Broker();
+        broker.setEmail(request.getEmail());
+        broker.setPassword(passwordEncoder.encode(request.getPassword()));
+        broker.setCompanyName(request.getCompanyName());
+        broker.setCollectionAccount(request.getCollectionAccount());
+        broker.setRdbCertificateUrl(request.getRdbCertificateUrl());
+        broker.setStatus(BrokerStatus.PENDING);
+        brokerRepository.save(broker);
+
+        return new AuthResponse(null, "REGISTRATION_SUCCESS_PENDING_APPROVAL");
+    }
+
+    public AuthResponse loginBroker(LoginRequest request) {
+        Broker broker = brokerRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new RuntimeException("Broker not found!"));
+
+        if (broker.getStatus() == BrokerStatus.PENDING) {
+            throw new RuntimeException("Your account is pending admin approval");
+        }
+        if (broker.getStatus() == BrokerStatus.REJECTED) {
+            throw new RuntimeException("Your account has been rejected and cannot access the platform");
+        }
+        if (broker.getStatus() == BrokerStatus.SUSPENDED) {
+            throw new RuntimeException("Your account has been suspended. Contact BNR support");
+        }
+
+        if (!passwordEncoder.matches(request.getPassword(), broker.getPassword())) {
+            throw new RuntimeException("Invalid password!");
+        }
+
+        String token = jwtService.generateToken(broker.getEmail(), "BROKER");
+        return new AuthResponse(token, "BROKER");
+    }
+
+    // --- UTILITY ---
+    public List<BrokerResponse> getApprovedBrokers() {
+        return brokerRepository.findByStatus(BrokerStatus.APPROVED)
+                .stream()
+                .map(broker -> BrokerResponse.builder()
+                        .id(broker.getId())
+                        .displayId(broker.getDisplayId())
+                        .companyName(broker.getCompanyName())
+                        .collectionAccount(broker.getCollectionAccount())
+                        .build())
+                .toList();
+    }
+
+    private InvestorProfileResponse mapToProfileResponse(User user) {
+        return InvestorProfileResponse.builder()
+                .id(user.getId())
+                .fullName(user.getFullName())
+                .email(user.getEmail())
+                .nationalId(user.getNationalId())
+                .payoutAccount(user.getPayoutAccount())
+                .payoutMethod(user.getPayoutMethod())
+                .payoutBankName(user.getPayoutBankName())
+                .build();
+    }
+
+    private String normalize(String value) {
+        return value == null ? null : value.trim().toUpperCase();
+    }
+
+    private String normalizePayoutMethod(String payoutMethod) {
+        String normalized = normalize(payoutMethod);
+        if (normalized == null || normalized.isBlank()) {
+            throw new RuntimeException("payoutMethod is required");
+        }
+        if ("MOBILE_MONEY".equals(normalized) || "MOMO".equals(normalized)) {
+            return "MOBILE_MONEY";
+        }
+        if ("BANK".equals(normalized)) {
+            return "BANK";
+        }
+        throw new RuntimeException("Unsupported payoutMethod: " + payoutMethod + ". Use BANK or MOBILE_MONEY");
+    }
+
+    private void validatePayoutProfile(String payoutMethod, String payoutAccount, String payoutBankName) {
+        if (payoutAccount == null || payoutAccount.isBlank()) {
+            throw new RuntimeException("payoutAccount is required");
+        }
+        if ("BANK".equals(payoutMethod) && (payoutBankName == null || payoutBankName.isBlank())) {
+            throw new RuntimeException("payoutBankName is required when payoutMethod is BANK");
+        }
     }
 }

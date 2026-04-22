@@ -1,10 +1,15 @@
 package com.bnr.bondpurchase.controller;
 
-import com.bnr.bondpurchase.dto.AuthDtos;
+import com.bnr.bondpurchase.dto.*;
+import com.bnr.bondpurchase.model.Broker;
 import com.bnr.bondpurchase.service.AuthService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -13,13 +18,48 @@ public class AuthController {
 
     private final AuthService authService;
 
-    @PostMapping("/login")
-    public ResponseEntity<AuthDtos.LoginResponse> login(@RequestBody AuthDtos.LoginRequest request) {
-        return ResponseEntity.ok(authService.login(request));
+    // --- ADMIN ---
+    @PostMapping("/admin/login")
+    public ResponseEntity<AuthResponse> loginAdmin(@RequestBody LoginRequest request) {
+        return ResponseEntity.ok(authService.loginAdmin(request));
     }
 
-    @PostMapping("/register")
-    public ResponseEntity<AuthDtos.LoginResponse> register(@RequestBody AuthDtos.RegisterRequest request) {
-        return ResponseEntity.ok(authService.register(request));
+    // --- INVESTOR ---
+    @PostMapping("/investor/register")
+    public ResponseEntity<AuthResponse> registerInvestor(@Valid @RequestBody InvestorRegisterRequest request) {
+        return ResponseEntity.ok(authService.registerInvestor(request));
+    }
+
+    @PostMapping("/investor/login")
+    public ResponseEntity<AuthResponse> loginInvestor(@RequestBody LoginRequest request) {
+        return ResponseEntity.ok(authService.loginInvestor(request));
+    }
+    @GetMapping("/investor/profile")
+    public ResponseEntity<InvestorProfileResponse> getProfile(Authentication auth) {
+        return ResponseEntity.ok(authService.getProfile(auth.getName()));
+    }
+
+    @PutMapping("/investor/profile")
+    public ResponseEntity<InvestorProfileResponse> updateProfile(
+            @Valid @RequestBody UpdateProfileRequest request,
+            Authentication auth) {
+        return ResponseEntity.ok(authService.updateProfile(auth.getName(), request));
+    }
+
+
+    // --- BROKER ---
+    @PostMapping("/broker/register")
+    public ResponseEntity<AuthResponse> registerBroker(@Valid @RequestBody BrokerRegisterRequest request) {
+        return ResponseEntity.ok(authService.registerBroker(request));
+    }
+
+    @PostMapping("/broker/login")
+    public ResponseEntity<AuthResponse> loginBroker(@RequestBody LoginRequest request) {
+        return ResponseEntity.ok(authService.loginBroker(request));
+    }
+
+    @GetMapping("/brokers")
+    public ResponseEntity<List<BrokerResponse>> getBrokers() {
+        return ResponseEntity.ok(authService.getApprovedBrokers());
     }
 }

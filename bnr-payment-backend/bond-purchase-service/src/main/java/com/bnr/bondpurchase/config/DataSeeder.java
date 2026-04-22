@@ -1,9 +1,9 @@
 package com.bnr.bondpurchase.config;
 
-import com.bnr.bondpurchase.entity.User;
+import com.bnr.bondpurchase.enums.UserRole;
+import com.bnr.bondpurchase.model.User;
 import com.bnr.bondpurchase.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -11,30 +11,29 @@ import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
-@Slf4j
 public class DataSeeder implements CommandLineRunner {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
-    @Value("${app.admin.email}")
+    @Value("${ADMIN_EMAIL:admin@bnr.rw}")
     private String adminEmail;
 
-    @Value("${app.admin.password}")
+    @Value("${ADMIN_PASSWORD:SuperSecretAdminPassword123!}")
     private String adminPassword;
 
     @Override
     public void run(String... args) {
+        // Only seed if no admin exists
         if (userRepository.findByEmail(adminEmail).isEmpty()) {
             User admin = new User();
             admin.setEmail(adminEmail);
-            admin.setPassword(passwordEncoder.encode(adminPassword));
-            admin.setRole("ADMIN");
-            admin.setFullName("BNR Admin");
+            admin.setPassword(passwordEncoder.encode(adminPassword)); // Hashed & Salted automatically!
+            admin.setFullName("BNR System Admin");
+            admin.setRole(UserRole.ADMIN);
+
             userRepository.save(admin);
-            log.info("✅ Admin user seeded: {}", adminEmail);
-        } else {
-            log.info("ℹ️ Admin user already exists, skipping seed.");
+            System.out.println("✅ Default BNR Admin seeded successfully!");
         }
     }
 }

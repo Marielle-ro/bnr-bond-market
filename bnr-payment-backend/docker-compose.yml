@@ -14,5 +14,32 @@ services:
       - rabbitmq_data:/var/lib/rabbitmq
     restart: unless-stopped
 
+  bond-purchase-service:
+    build: ./bond-purchase-service
+    container_name: bond-purchase-service
+    ports:
+      - "8081:8081"
+    depends_on:
+      - rabbitmq
+    restart: unless-stopped
+
+  payment-service:
+    build: ./payment-service
+    container_name: payment-service
+    ports:
+      - "8082:8082"
+    depends_on:
+      - rabbitmq
+    restart: unless-stopped
+
+  payout-service:
+    build: ./payout-service
+    container_name: payout-service
+    ports:
+      - "8083:8083"
+    depends_on:
+      - rabbitmq
+    restart: unless-stopped
+
 volumes:
   rabbitmq_data:
