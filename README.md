@@ -220,6 +220,4 @@ This project is a modular bond market platform for Rwanda, supporting the full l
 
 This project is a robust foundation for a digital bond market platform, designed for extensibility and real-world integration. The codebase is modular, well-structured, and ready for production enhancements. New contributors should read this document, review the code for specific logic, and follow the contribution guide for smooth onboarding.
 
----
 
-If you need this as a markdown file or want more detail on any section (e.g., specific endpoint payloads, database schema, or code walkthroughs), let me know!You've used 76% of your session rate limit. Your session rate limit will reset on April 27 at 5:05 PM. [Learn More](https://aka.ms/github-copilot-rate-limit-error)
