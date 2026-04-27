@@ -1,6 +1,3 @@
-Absolutely! Here’s a comprehensive technical documentation draft for your bond payment microservice project. This is structured for clarity, onboarding, and future development, and covers backend, frontend, architecture, extensibility, and known limitations.
-
----
 
 # Bond Payment Microservice — Technical Documentation
 
